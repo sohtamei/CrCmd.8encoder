@@ -5,18 +5,19 @@
 
 static const char *TAG = "I2C";
 
+#define _8ENCODER_ADDR		0x41
+#define GPIO_SCL			1
+#define GPIO_SDA			2
 
 #define I2C_TIMEOUT_MS		1000
 #define I2C_PORT			0
-
-#define _8ENCODER_ADDR		0x41
 
 int _8encoder_init(void)
 {
 	const i2c_config_t i2c_conf = {
 		.mode = I2C_MODE_MASTER,
-		.sda_io_num = 2,
-		.scl_io_num = 1,
+		.sda_io_num = GPIO_SDA,
+		.scl_io_num = GPIO_SCL,
 		.sda_pullup_en = GPIO_PULLUP_ENABLE,
 		.scl_pullup_en = GPIO_PULLUP_ENABLE,
 		.master.clk_speed = 10000,
@@ -66,7 +67,7 @@ int _8encoder_read(int reg, int32_t* data, int num)
 	return 0;
 }
 
-int _8encoder_write(int reg, uint32_t data)
+int _8encoder_write(int reg, int index, uint32_t data)
 {
 	int regSize = 1;
 	if((reg&0xF0) == _8ENCODER_REG_RGB || (reg&0xF0) == _8ENCODER_REG_RGB+0x10)
@@ -74,7 +75,7 @@ int _8encoder_write(int reg, uint32_t data)
 
 	int ret;
 	uint8_t sendBuf[1+4];
-	sendBuf[0] = reg;
+	sendBuf[0] = reg+index*regSize;
 
 	for(int j = 0; j < regSize; j++) {
 		sendBuf[1+j] = (data>>(j*8))&0xFF;
