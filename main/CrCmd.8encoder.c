@@ -1,9 +1,4 @@
-// GetDP
-// LED制御
-// ExpProgMode改善
-// 安定？
-// 5V電源問題
-// 
+// カメラUSB挿抜
 
 /*
  * SPDX-FileCopyrightText: 2021-2022 Espressif Systems (Shanghai) CO LTD
@@ -18,6 +13,7 @@
 #include "freertos/semphr.h"
 #include "esp_log.h"
 #include "esp_intr_alloc.h"
+#include "driver/gpio.h"
 #include "usb/usb_host.h"
 
 #include "PTPDef.h"
@@ -30,7 +26,6 @@ static const char *TAG = "DAEMON";
 #define CLASS_TASK_PRIORITY     3
 
 #define CLIENT_NUM_EVENT_MSG    5
-#define RECV_BUFFER  32768
 
 #define PARAM_NUM  5
 
@@ -89,9 +84,14 @@ usb_transfer_t *event_in = NULL;
 static int updateDeviceProp(int onlyDiff);
 
 
+#define GPIO_USB_DIR		4
+#define GPIP_5V_LDO			36
+#define GPIO_NEOPIXEL		35
+
+
 //------------ usb host ------------
 
-//#define BULK_PACKET_SIZE	512
+#define RECV_BUFFER  32768
 #define BULK_IN_EP_ADDR		0x81
 #define BULK_OUT_EP_ADDR	0x02
 #define INT_IN_EP_ADDR		0x83
@@ -218,11 +218,11 @@ int usb_host_connect(void)
 
 	const usb_device_desc_t *dev_desc;
 	ESP_ERROR_CHECK(usb_host_get_device_descriptor(g_driver_obj.dev_hdl, &dev_desc));
-	//usb_print_device_descriptor(dev_desc);
+	usb_print_device_descriptor(dev_desc);
 
 	const usb_config_desc_t *config_desc;
 	ESP_ERROR_CHECK(usb_host_get_active_config_descriptor(g_driver_obj.dev_hdl, &config_desc));
-	//usb_print_config_descriptor(config_desc, NULL);
+	usb_print_config_descriptor(config_desc, NULL);
 
 	ESP_ERROR_CHECK(usb_host_device_info(g_driver_obj.dev_hdl, &dev_info));
 	if(dev_info.str_desc_manufacturer) {
@@ -538,7 +538,7 @@ static int updateDeviceProp(int onlyDiff)
 			break;
 		}
 		if(index >= 0) {
-			ESP_LOGI(TAG, "%04x,%d,%d,%d,%ld,%d", pcode,datatype,getset,isenabled,current,formflag);
+			ESP_LOGI(TAG, "%04x, %d,%d,%d,%d, %ld,%ld", pcode, datatype,getset,isenabled,formflag, paramTable[index].currentIndex,current);
 			int led = (paramTable[index].isenabled==1 ? 0x101010: 0x000000);
 			if(paramTable[index].led != led) {
 				paramTable[index].led = led;
@@ -552,7 +552,13 @@ static int updateDeviceProp(int onlyDiff)
 
 void app_main(void)
 {
+	gpio_set_direction(GPIP_5V_LDO, GPIO_MODE_OUTPUT);
+	gpio_set_level(GPIP_5V_LDO, 1);			// ON
+
 	usb_host_init();
+
+	gpio_set_direction(GPIO_USB_DIR, GPIO_MODE_OUTPUT);
+	gpio_set_level(GPIO_USB_DIR, 0);		// USB host
 
 	sem_class = xSemaphoreCreateBinary();
 
@@ -581,7 +587,9 @@ void app_main(void)
 
 	_8encoder_init();
 
-	vTaskDelay(100);
+	while(g_driver_obj.dev_hdl == NULL)
+		vTaskDelay(100);
+	vTaskDelay(50);
 
 	// open session, connect(v3)
 	usb_ptp_transfer(PTP_OC_OpenSession, 1, 1,0,0,0,0, NULL,0, NULL,NULL);
