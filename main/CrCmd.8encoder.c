@@ -42,11 +42,11 @@ struct _Param {
 	int32_t  currentIndex;
 	uint32_t led;
 } paramTable[PARAM_NUM] = {
-	{DPC_EXPOSURE_MODE,			0,0,0,0,0,NULL,0,0,0},
 	{DPC_SHUTTER_SPEED,			0,0,0,0,0,NULL,0,0,0},
 	{DPC_FNUMBER,				0,0,0,0,0,NULL,0,0,0},
 	{DPC_EXPOSURE_COMPENSATION,	0,0,0,0,0,NULL,0,0,0},
-	{DPC_ISO,					0,0,0,0,0,NULL,0,0,0}
+	{DPC_ISO,					0,0,0,0,0,NULL,0,0,0},
+	{DPC_EXPOSURE_MODE,			0,0,0,0,0,NULL,0,0,0},
 };
 
 #define TIMEOUT_MS 100
